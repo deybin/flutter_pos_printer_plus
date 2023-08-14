@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
-import 'package:esc_pos_utils/esc_pos_utils.dart';
+import 'package:flutter_pos_printer_example/esc_pos_utils/lib/esc_pos_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_pos_printer_example/esc_pos_utils/lib/src/enums_plus.dart';
 import 'package:flutter_pos_printer_platform/flutter_pos_printer_platform.dart';
 
 void main() {
@@ -152,14 +153,14 @@ class _MyAppState extends State<MyApp> {
     List<int> bytes = [];
 
     // Xprinter XP-N160I
-    final profile = await CapabilityProfile.load(name: 'XP-N160I');
+    final profile = await CapabilityProfile.load(name: 'MHP-T11');
     // PaperSize.mm80 or PaperSize.mm58
-    final generator = Generator(PaperSize.mm80, profile);
-    bytes += generator.setGlobalCodeTable('CP1252');
-    bytes += generator.text('Test Print', styles: const PosStyles(align: PosAlign.center));
-    bytes += generator.text('Product 1');
-    bytes += generator.text('Product 2');
-
+    final generator = Generator(PaperSize.mm58, profile);
+    bytes += generator.setGlobalCodeTable('PC437');
+    // bytes += generator.text('Test Print', styles: const PosStyles(align: PosAlign.right, fontType: EscFont.small));
+    // bytes += generator.text('==========================================', styles: const PosStyles(align: PosAlign.right, fontType: EscFont.small));
+    // bytes += generator.text(' ');
+    bytes += generator.feed(5);
     _printEscPos(bytes, generator);
   }
 
@@ -173,19 +174,14 @@ class _MyAppState extends State<MyApp> {
         bytes += generator.feed(2);
         bytes += generator.cut();
         await printerManager.connect(
-            type: bluetoothPrinter.typePrinter,
-            model: UsbPrinterInput(name: bluetoothPrinter.deviceName, productId: bluetoothPrinter.productId, vendorId: bluetoothPrinter.vendorId));
+            type: bluetoothPrinter.typePrinter, model: UsbPrinterInput(name: bluetoothPrinter.deviceName, productId: bluetoothPrinter.productId, vendorId: bluetoothPrinter.vendorId));
         pendingTask = null;
         break;
       case PrinterType.bluetooth:
-        bytes += generator.cut();
+        // bytes += generator.cut();
         await printerManager.connect(
             type: bluetoothPrinter.typePrinter,
-            model: BluetoothPrinterInput(
-                name: bluetoothPrinter.deviceName,
-                address: bluetoothPrinter.address!,
-                isBle: bluetoothPrinter.isBle ?? false,
-                autoConnect: _reconnect));
+            model: BluetoothPrinterInput(name: bluetoothPrinter.deviceName, address: bluetoothPrinter.address!, isBle: bluetoothPrinter.isBle ?? false, autoConnect: _reconnect));
         pendingTask = null;
         if (Platform.isAndroid) pendingTask = bytes;
         break;
@@ -213,18 +209,13 @@ class _MyAppState extends State<MyApp> {
     switch (selectedPrinter!.typePrinter) {
       case PrinterType.usb:
         await printerManager.connect(
-            type: selectedPrinter!.typePrinter,
-            model: UsbPrinterInput(name: selectedPrinter!.deviceName, productId: selectedPrinter!.productId, vendorId: selectedPrinter!.vendorId));
+            type: selectedPrinter!.typePrinter, model: UsbPrinterInput(name: selectedPrinter!.deviceName, productId: selectedPrinter!.productId, vendorId: selectedPrinter!.vendorId));
         _isConnected = true;
         break;
       case PrinterType.bluetooth:
         await printerManager.connect(
             type: selectedPrinter!.typePrinter,
-            model: BluetoothPrinterInput(
-                name: selectedPrinter!.deviceName,
-                address: selectedPrinter!.address!,
-                isBle: selectedPrinter!.isBle ?? false,
-                autoConnect: _reconnect));
+            model: BluetoothPrinterInput(name: selectedPrinter!.deviceName, address: selectedPrinter!.address!, isBle: selectedPrinter!.isBle ?? false, autoConnect: _reconnect));
         break;
       case PrinterType.network:
         await printerManager.connect(type: selectedPrinter!.typePrinter, model: TcpPrinterInput(ipAddress: selectedPrinter!.address!));
@@ -366,9 +357,7 @@ class _MyAppState extends State<MyApp> {
                           .map(
                             (device) => ListTile(
                               title: Text('${device.deviceName}'),
-                              subtitle: Platform.isAndroid && defaultPrinterType == PrinterType.usb
-                                  ? null
-                                  : Visibility(visible: !Platform.isWindows, child: Text("${device.address}")),
+                              subtitle: Platform.isAndroid && defaultPrinterType == PrinterType.usb ? null : Visibility(visible: !Platform.isWindows, child: Text("${device.address}")),
                               onTap: () {
                                 // do something
                                 selectDevice(device);
@@ -465,13 +454,5 @@ class BluetoothPrinter {
   PrinterType typePrinter;
   bool? state;
 
-  BluetoothPrinter(
-      {this.deviceName,
-      this.address,
-      this.port,
-      this.state,
-      this.vendorId,
-      this.productId,
-      this.typePrinter = PrinterType.bluetooth,
-      this.isBle = false});
+  BluetoothPrinter({this.deviceName, this.address, this.port, this.state, this.vendorId, this.productId, this.typePrinter = PrinterType.bluetooth, this.isBle = false});
 }
